@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Lluvia de estrellas · Entrena tu propia IA</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main class="juego">
+    <div class="marcador">
+      <span id="puntaje">Puntos: 0</span>
+      <span id="tiempo" class="tiempo">60 s</span>
+    </div>
+
+    <div class="escenario">
+      <canvas id="lienzo"></canvas>
+      <div id="capa" class="capa"></div>
+    </div>
+
+    <div class="sensor">
+      <video id="video" playsinline muted autoplay></video>
+      <div id="barras" class="barras"></div>
+    </div>
+
+    <div class="opciones">
+      <button id="btn-invertir" class="secundario">Invertir: no</button>
+      <a class="boton secundario" href="index.html">Lanzador</a>
+    </div>
+  </main>
+
+  <!-- Librerías: TensorFlow.js + Teachable Machine (versiones compatibles entre sí) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+
+  <!-- Nuestro código -->
+  <script src="js/ia.js"></script>
+  <script src="js/juego.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrena tu propia IA · Lanzador</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main class="contenedor">
+    <h1>Entrena tu propia <span>IA</span></h1>
+    <p class="sub">Conecta el modelo de tu equipo con el juego y ábrelo en tu celular.</p>
+
+    <section class="panel">
+      <ol class="pasos">
+        <li>En Teachable Machine: <b>Export Model</b> → <b>Upload my model</b>.</li>
+        <li>Copia el enlace que aparece y pégalo aquí abajo.</li>
+        <li>Escanea el QR con tu celular y acepta la cámara.</li>
+      </ol>
+    </section>
+
+    <section class="panel">
+      <label for="url">URL de tu modelo</label>
+      <input id="url" type="url" inputmode="url" autocomplete="off"
+             placeholder="https://teachablemachine.withgoogle.com/models/XXXXXXX/">
+      <div class="fila">
+        <button id="btn-generar">Generar QR</button>
+        <button id="btn-respaldo" class="secundario">Usar modelo de respaldo</button>
+      </div>
+      <div id="msg" class="msg"></div>
+    </section>
+
+    <section id="resultado" class="panel" hidden>
+      <div id="clases" class="msg"></div>
+      <div id="qr" class="qr"></div>
+      <div id="enlace" class="enlace"></div>
+      <div class="fila">
+        <button id="btn-copiar" class="secundario">Copiar enlace</button>
+        <a id="btn-abrir" class="boton secundario" href="#">Abrir aquí</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Generador de QR -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script>
+    // ===== Configuración del docente =====
+    // Pega aquí la URL del modelo que entrenaste como respaldo.
+    const MODELO_RESPALDO = "";
+
+    const $ = (id) => document.getElementById(id);
+    const PATRON = /^https:\/\/teachablemachine\.withgoogle\.com\/models\/[\w-]+\/?$/;
+
+    function mensaje(texto, tipo) {
+      $("msg").textContent = texto;
+      $("msg").className = "msg " + (tipo || "");
+    }
+
+    function normalizar(t) {
+      return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    }
+
+    async function generar(urlModelo) {
+      urlModelo = urlModelo.trim();
+      if (!PATRON.test(urlModelo)) {
+        mensaje("Esa no parece una URL de Teachable Machine. Debe verse como https://teachablemachine.withgoogle.com/models/XXXX/", "error");
+        $("resultado").hidden = true;
+        return;
+      }
+      if (!urlModelo.endsWith("/")) urlModelo += "/";
+      mensaje("Revisando tu modelo…");
+
+      // Comprobar que el modelo existe y leer sus clases
+      let etiquetas = [];
+      try {
+        const r = await fetch(urlModelo + "metadata.json", { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        etiquetas = (await r.json()).labels || [];
+      } catch (e) {
+        mensaje("No se encontró el modelo. ¿Ya pulsaste \"Upload my model\"? ¿Hay internet?", "error");
+        $("resultado").hidden = true;
+        return;
+      }
+
+      const n = etiquetas.map(normalizar);
+      const tieneIzq = n.some((e) => e.includes("izq") || e.includes("left"));
+      const tieneDer = n.some((e) => e.includes("der") || e.includes("right"));
+      if (tieneIzq && tieneDer) {
+        mensaje("¡Modelo encontrado!", "ok");
+      } else {
+        mensaje("Modelo encontrado, pero faltan las clases Izquierda y/o Derecha. Renómbralas y vuelve a subirlo.", "aviso");
+      }
+      $("clases").textContent = "Clases: " + etiquetas.join(" · ");
+
+      const urlJuego = new URL("juego.html", location.href);
+      urlJuego.searchParams.set("model", urlModelo);
+      const enlace = urlJuego.toString();
+
+      const qr = qrcode(0, "M");
+      qr.addData(enlace);
+      qr.make();
+      $("qr").innerHTML = qr.createImgTag(5, 10);
+      $("enlace").textContent = enlace;
+      $("btn-abrir").href = enlace;
+      $("resultado").hidden = false;
+
+      try { localStorage.setItem("ultimo-modelo", urlModelo); } catch (e) { /* sin almacenamiento */ }
+    }
+
+    $("btn-generar").onclick = () => generar($("url").value);
+    $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") generar($("url").value); });
+
+    $("btn-respaldo").onclick = () => {
+      if (!MODELO_RESPALDO) { mensaje("El docente aún no configuró un modelo de respaldo.", "aviso"); return; }
+      $("url").value = MODELO_RESPALDO;
+      generar(MODELO_RESPALDO);
+    };
+
+    $("btn-copiar").onclick = async () => {
+      try {
+        await navigator.clipboard.writeText($("enlace").textContent);
+        mensaje("Enlace copiado.", "ok");
+      } catch (e) {
+        mensaje("No se pudo copiar; selecciona el enlace manualmente.", "aviso");
+      }
+    };
+
+    try {
+      const previo = localStorage.getItem("ultimo-modelo");
+      if (previo) $("url").value = previo;
+    } catch (e) { /* sin almacenamiento */ }
+  </script>
+</body>
+</html>
